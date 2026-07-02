@@ -105,7 +105,7 @@ export function EditOrderDialog({ order, products, isOpen, onClose, onSave }: Ed
                 className="flex-1"
                 required
               />
-              <Select value={unit} onValueChange={(val: "KG" | "GM") => setUnit(val)}>
+              <Select value={unit} onValueChange={(val) => setUnit(val as "KG" | "GM")}>
                 <SelectTrigger className="w-[80px]">
                   <SelectValue />
                 </SelectTrigger>

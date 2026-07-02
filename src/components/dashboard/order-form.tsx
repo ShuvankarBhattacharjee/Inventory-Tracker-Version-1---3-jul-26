@@ -161,7 +161,7 @@ export function OrderForm({ products, onAddOrder }: OrderFormProps) {
                   className="flex-1"
                   required
                 />
-                <Select value={unit} onValueChange={(val: "KG" | "GM") => setUnit(val)}>
+                <Select value={unit} onValueChange={(val) => setUnit(val as "KG" | "GM")}>
                   <SelectTrigger className="w-[80px]">
                     <SelectValue />
                   </SelectTrigger>
