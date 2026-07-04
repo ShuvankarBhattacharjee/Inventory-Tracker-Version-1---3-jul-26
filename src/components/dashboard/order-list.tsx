@@ -21,10 +21,11 @@ interface OrderListProps {
   onGenerateDailyInvoice: () => void;
   isSyncing?: boolean;
   isFetching?: boolean;
+  isPastDate?: boolean;
   onSync?: () => void;
 }
 
-export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, isFetching, onSync }: OrderListProps) {
+export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, isFetching, isPastDate, onSync }: OrderListProps) {
   return (
     <Card className="shadow-md border-slate-200 dark:border-slate-800">
       <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -96,6 +97,7 @@ export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, 
                     checked={order.status === "Packed"}
                     onCheckedChange={(checked) => onToggleStatus(order.id, checked as boolean)}
                     aria-label="Mark as packed"
+                    disabled={isPastDate}
                   />
                 </TableCell>
                 <TableCell className="font-medium text-slate-800 dark:text-slate-200">
@@ -137,28 +139,33 @@ export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, 
                     >
                       <FileText className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => onEditOrder(order)}
-                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
-                      title="Edit Order"
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => {
-                        if(confirm('Are you sure you want to delete this order? Stock will be restored.')) {
-                          onDeleteOrder(order.id);
-                        }
-                      }}
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
-                      title="Delete Order"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    
+                    {!isPastDate && (
+                      <>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => onEditOrder(order)}
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950"
+                          title="Edit Order"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => {
+                            if(confirm('Are you sure you want to delete this order? Stock will be restored.')) {
+                              onDeleteOrder(order.id);
+                            }
+                          }}
+                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                          title="Delete Order"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

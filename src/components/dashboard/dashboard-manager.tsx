@@ -23,10 +23,17 @@ export function DashboardManager() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [showDailyInvoice, setShowDailyInvoice] = useState(false);
   const [historicalInvoiceData, setHistoricalInvoiceData] = useState<{orders: Order[], date: string} | null>(null);
+  const getLocalToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const [isSyncing, setIsSyncing] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getLocalToday());
   const [isFetchingOrders, setIsFetchingOrders] = useState(false);
   const loadedDates = useRef<Set<string>>(new Set());
+
+  const isPastDate = selectedDate < getLocalToday();
 
   const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz9LVCcHy7O7j-LHGE3LL_-DWOWwbmXq0iyB6gIbvYweL3N_kAaGlZBjKPwkU0LBvZ4ng/exec";
 
@@ -79,6 +86,17 @@ export function DashboardManager() {
     fetchOrders();
   }, [selectedDate]);
 
+  // Dynamically calculate available stock based on all loaded orders
+  const displayProducts = products.map(p => {
+    const usedQuantity = orders
+      .filter(o => o.product === p.variety)
+      .reduce((sum, o) => sum + o.totalQuantityKg, 0);
+    return {
+      ...p,
+      availableQuantity: p.initialQuantity - usedQuantity
+    };
+  });
+
   // Handlers
   const handleAddStock = (variety: MushroomVariety, quantity: number) => {
     setProducts((prev) => {
@@ -88,8 +106,7 @@ export function DashboardManager() {
           p.variety === variety 
             ? { 
                 ...p, 
-                availableQuantity: p.availableQuantity + quantity,
-                initialQuantity: (p.initialQuantity || 0) + quantity 
+                initialQuantity: p.initialQuantity + quantity 
               } 
             : p
         );
@@ -105,11 +122,14 @@ export function DashboardManager() {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     
-    const soldQuantity = (product.initialQuantity || product.availableQuantity) - product.availableQuantity;
-    const newAvailable = newInitialQuantity - soldQuantity;
+    const usedQuantity = orders
+      .filter(o => o.product === product.variety)
+      .reduce((sum, o) => sum + o.totalQuantityKg, 0);
+      
+    const newAvailable = newInitialQuantity - usedQuantity;
     
     if (newAvailable < 0) {
-      toast.error(`Cannot reduce stock to ${newInitialQuantity}kg because ${soldQuantity.toFixed(2)}kg have already been sold.`);
+      toast.error(`Cannot reduce stock to ${newInitialQuantity}kg because ${usedQuantity.toFixed(2)}kg have already been sold/allocated.`);
       return;
     }
     
@@ -125,7 +145,7 @@ export function DashboardManager() {
   };
 
   const handleAddOrder = (orderData: Omit<Order, "id" | "status" | "date"> & { date?: string }) => {
-    const product = products.find(p => p.variety === orderData.product);
+    const product = displayProducts.find(p => p.variety === orderData.product);
     if (!product || product.availableQuantity < orderData.totalQuantityKg) {
       return false;
     }
@@ -138,16 +158,7 @@ export function DashboardManager() {
       date: date || new Date().toISOString()
     };
 
-    // Deduct stock
-    setProducts((prev) => 
-      prev.map(p => 
-        p.variety === orderData.product 
-          ? { ...p, availableQuantity: p.availableQuantity - orderData.totalQuantityKg }
-          : p
-      )
-    );
-
-    // Add order
+    // Add order (availableQuantity is now calculated dynamically)
     setOrders((prev) => [newOrder, ...prev]);
     
     // Automatically switch the view to the date of the order just placed
@@ -157,25 +168,17 @@ export function DashboardManager() {
   };
   
   const handleEditOrderSave = (updatedOrder: Order, oldQuantityKg: number) => {
-    // Add old stock back, deduct new stock
     const diff = updatedOrder.totalQuantityKg - oldQuantityKg;
-    
-    const product = products.find(p => p.variety === updatedOrder.product);
+    const product = displayProducts.find(p => p.variety === updatedOrder.product);
     if (diff > 0 && (!product || product.availableQuantity < diff)) {
       return false; // Shouldn't happen due to validation, but safe
     }
     
-    setProducts((prev) => 
-      prev.map(p => 
-        p.variety === updatedOrder.product 
-          ? { ...p, availableQuantity: p.availableQuantity - diff }
-          : p
-      )
-    );
-
-    setOrders((prev) => 
-      prev.map(o => o.id === updatedOrder.id ? updatedOrder : o)
-    );
+    const newOrders = orders.map(o => o.id === updatedOrder.id ? updatedOrder : o);
+    setOrders(newOrders);
+    
+    // Auto sync after saving edits
+    handleSyncToGoogleSheets(newOrders);
     
     return true;
   };
@@ -184,27 +187,20 @@ export function DashboardManager() {
     const orderToDelete = orders.find(o => o.id === orderId);
     if (!orderToDelete) return;
 
-    // Add stock back
-    setProducts((prev) => 
-      prev.map(p => 
-        p.variety === orderToDelete.product 
-          ? { ...p, availableQuantity: p.availableQuantity + orderToDelete.totalQuantityKg }
-          : p
-      )
-    );
-
-    // Remove order
-    setOrders((prev) => prev.filter(o => o.id !== orderId));
+    // Remove order (stock is added back dynamically)
+    const newOrders = orders.filter(o => o.id !== orderId);
+    setOrders(newOrders);
+    handleSyncToGoogleSheets(newOrders);
   };
 
   const handleToggleOrderStatus = (orderId: string, isPacked: boolean) => {
-    setOrders((prev) => 
-      prev.map(o => 
-        o.id === orderId 
-          ? { ...o, status: isPacked ? "Packed" : "Pending" } 
-          : o
-      )
+    const newOrders = orders.map(o => 
+      o.id === orderId 
+        ? { ...o, status: isPacked ? "Packed" : "Pending" } 
+        : o
     );
+    setOrders(newOrders);
+    handleSyncToGoogleSheets(newOrders);
   };
 
   const handleSaveInvoice = (order: Order) => {
@@ -219,8 +215,8 @@ export function DashboardManager() {
     setInvoices((prev) => [newInvoice, ...prev]);
   };
 
-  const handleSyncToGoogleSheets = async () => {
-    const ordersToSync = orders.filter(o => o.date.split('T')[0] === selectedDate);
+  const handleSyncToGoogleSheets = async (ordersOverride?: Order[]) => {
+    const ordersToSync = (ordersOverride || orders).filter(o => o.date.split('T')[0] === selectedDate);
     // Allow syncing even if 0 orders so users can clear a day in the sheets
     
     setIsSyncing(true);
@@ -273,7 +269,7 @@ export function DashboardManager() {
       {/* 1. Opening Stock Section */}
       <section>
         <OpeningStock 
-          products={products} 
+          products={displayProducts} 
           onAddStock={handleAddStock} 
           onEditStock={handleEditStock}
           onDeleteStock={handleDeleteStock}
@@ -283,7 +279,7 @@ export function DashboardManager() {
       {/* 2 & 3. Order Form and Order List */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 lg:sticky lg:top-6">
-          <OrderForm products={products} onAddOrder={handleAddOrder} />
+          <OrderForm products={displayProducts} onAddOrder={handleAddOrder} />
         </div>
         
         <div className="lg:col-span-2">
@@ -297,8 +293,9 @@ export function DashboardManager() {
             onDeleteOrder={handleDeleteOrder}
             onGenerateDailyInvoice={() => setShowDailyInvoice(true)}
             isSyncing={isSyncing}
-            onSync={handleSyncToGoogleSheets}
+            onSync={() => handleSyncToGoogleSheets()}
             isFetching={isFetchingOrders}
+            isPastDate={isPastDate}
           />
         </div>
       </section>
@@ -332,7 +329,7 @@ export function DashboardManager() {
 
       <EditOrderDialog
         order={editingOrder}
-        products={products}
+        products={displayProducts}
         isOpen={!!editingOrder}
         onClose={() => setEditingOrder(null)}
         onSave={handleEditOrderSave}
