@@ -20,10 +20,11 @@ interface OrderListProps {
   onDeleteOrder: (orderId: string) => void;
   onGenerateDailyInvoice: () => void;
   isSyncing?: boolean;
+  isFetching?: boolean;
   onSync?: () => void;
 }
 
-export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, onSync }: OrderListProps) {
+export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, isFetching, onSync }: OrderListProps) {
   return (
     <Card className="shadow-md border-slate-200 dark:border-slate-800">
       <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -162,7 +163,15 @@ export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, 
                 </TableCell>
               </TableRow>
             ))}
-            {orders.length === 0 && (
+            {orders.length === 0 && isFetching && (
+              <TableRow>
+                <TableCell colSpan={10} className="h-32 text-center text-slate-500">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-emerald-600" />
+                  Fetching orders for {new Date(selectedDate).toLocaleDateString('en-GB')}...
+                </TableCell>
+              </TableRow>
+            )}
+            {orders.length === 0 && !isFetching && (
               <TableRow>
                 <TableCell colSpan={10} className="h-32 text-center text-slate-500">
                   No orders found for {new Date(selectedDate).toLocaleDateString('en-GB')}.

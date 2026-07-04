@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { OpeningStock } from "./opening-stock";
 import { OrderForm } from "./order-form";
 import { OrderList } from "./order-list";
@@ -25,6 +25,10 @@ export function DashboardManager() {
   const [historicalInvoiceData, setHistoricalInvoiceData] = useState<{orders: Order[], date: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isFetchingOrders, setIsFetchingOrders] = useState(false);
+  const loadedDates = useRef<Set<string>>(new Set());
+
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz9LVCcHy7O7j-LHGE3LL_-DWOWwbmXq0iyB6gIbvYweL3N_kAaGlZBjKPwkU0LBvZ4ng/exec";
 
   // Prevent accidental refresh/leave
   useEffect(() => {
@@ -41,6 +45,39 @@ export function DashboardManager() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [products.length, orders.length]);
+
+  // Fetch orders when selectedDate changes
+  useEffect(() => {
+    const fetchOrders = async () => {
+      // If we already loaded this date, or if it's the very first load and we don't have a URL to fetch from, skip
+      if (loadedDates.current.has(selectedDate)) return;
+      
+      setIsFetchingOrders(true);
+      try {
+        const response = await fetch(`${SCRIPT_URL}?date=${selectedDate}`);
+        if (!response.ok) throw new Error('Failed to fetch data');
+        const data = await response.json();
+        
+        if (data && !data.error && Array.isArray(data) && data.length > 0) {
+          // Add these orders to the local state
+          setOrders(prev => {
+            // Remove any existing orders for this date to avoid duplicates
+            const otherOrders = prev.filter(o => o.date.split('T')[0] !== selectedDate);
+            return [...otherOrders, ...data];
+          });
+        }
+        loadedDates.current.add(selectedDate);
+      } catch (err) {
+        console.error("Error fetching detailed orders:", err);
+        // We still mark as loaded so we don't endlessly retry if there's no data
+        loadedDates.current.add(selectedDate);
+      } finally {
+        setIsFetchingOrders(false);
+      }
+    };
+    
+    fetchOrders();
+  }, [selectedDate]);
 
   // Handlers
   const handleAddStock = (variety: MushroomVariety, quantity: number) => {
@@ -184,7 +221,7 @@ export function DashboardManager() {
 
   const handleSyncToGoogleSheets = async () => {
     const ordersToSync = orders.filter(o => o.date.split('T')[0] === selectedDate);
-    if (ordersToSync.length === 0) return;
+    // Allow syncing even if 0 orders so users can clear a day in the sheets
     
     setIsSyncing(true);
     try {
@@ -200,21 +237,23 @@ export function DashboardManager() {
       const encodedData = encodeURIComponent(JSON.stringify(ordersToSync));
       const invoiceLink = `${window.location.origin}/daily-invoice?data=${encodedData}`;
 
-      const payload = new URLSearchParams();
-      payload.append('date', selectedDate);
-      payload.append('totalAmount', totalAmount.toString());
-      payload.append('totalQuantityKg', totalQuantityKg.toString());
-      payload.append('orderCount', orders.length.toString());
-      payload.append('details', details);
-      payload.append('invoiceLink', invoiceLink);
+      const payload = {
+        date: selectedDate,
+        totalAmount,
+        totalQuantityKg,
+        orderCount: ordersToSync.length,
+        details,
+        invoiceLink,
+        orders: ordersToSync
+      };
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbz9LVCcHy7O7j-LHGE3LL_-DWOWwbmXq0iyB6gIbvYweL3N_kAaGlZBjKPwkU0LBvZ4ng/exec', {
+      const response = await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'text/plain',
         },
-        body: payload.toString()
+        body: JSON.stringify(payload)
       });
 
       // no-cors means we won't be able to read response status, so we assume success if no throw
@@ -259,6 +298,7 @@ export function DashboardManager() {
             onGenerateDailyInvoice={() => setShowDailyInvoice(true)}
             isSyncing={isSyncing}
             onSync={handleSyncToGoogleSheets}
+            isFetching={isFetchingOrders}
           />
         </div>
       </section>
