@@ -31,7 +31,7 @@ export function InvoicePreview({ order, isOpen, onClose, onSave }: InvoicePrevie
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 print:w-full print:max-w-none print:shadow-none print:m-0 print:p-0">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 print:w-full print:max-w-none print:shadow-none print:m-0 print:p-0 print:overflow-visible">
         <DialogHeader className="print:hidden">
           <DialogTitle className="text-xl">Invoice Preview</DialogTitle>
         </DialogHeader>
