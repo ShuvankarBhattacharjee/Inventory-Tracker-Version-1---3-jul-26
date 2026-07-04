@@ -15,7 +15,20 @@ interface DailyInvoicePreviewProps {
 export function DailyInvoicePreview({ orders, isOpen, onClose, date }: DailyInvoicePreviewProps) {
   if (!isOpen) return null;
 
-  const invoiceDate = date ? new Date(date) : new Date();
+  let invoiceDate = new Date();
+  if (date) {
+    if (date.includes('/')) {
+      const parts = date.split('/');
+      if (parts.length === 3) {
+        // Assume DD/MM/YYYY
+        invoiceDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`);
+      } else {
+        invoiceDate = new Date(date);
+      }
+    } else {
+      invoiceDate = new Date(date);
+    }
+  }
 
   // Generate a daily invoice number
   const invoiceNumber = `DAILY-${invoiceDate.getFullYear()}${String(invoiceDate.getMonth() + 1).padStart(2, '0')}${String(invoiceDate.getDate()).padStart(2, '0')}`;

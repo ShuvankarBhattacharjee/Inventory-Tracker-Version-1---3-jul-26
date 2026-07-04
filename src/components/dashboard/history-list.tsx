@@ -133,10 +133,16 @@ export function HistoryList({ onViewInvoice }: HistoryListProps) {
               </TableHeader>
               <TableBody>
                 {records.map((record, index) => {
-                  // Ensure date string looks nice (strip timestamps if needed)
-                  const dateStr = typeof record.date === 'string' 
-                    ? record.date.split('T')[0] 
-                    : record.date;
+                  let dateStr = record.date;
+                  if (typeof record.date === 'string') {
+                    if (record.date.includes('T')) {
+                      const d = new Date(record.date);
+                      dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    } else {
+                      // If it's something like DD/MM/YYYY just show it
+                      dateStr = record.date.split('T')[0];
+                    }
+                  }
                   
                   return (
                     <TableRow key={index} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors group cursor-pointer" onClick={() => handleViewInvoice(record)}>

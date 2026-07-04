@@ -24,6 +24,7 @@ export function DashboardManager() {
   const [showDailyInvoice, setShowDailyInvoice] = useState(false);
   const [historicalInvoiceData, setHistoricalInvoiceData] = useState<{orders: Order[], date: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Prevent accidental refresh/leave
   useEffect(() => {
@@ -86,17 +87,18 @@ export function DashboardManager() {
     setProducts((prev) => prev.filter(p => p.id !== productId));
   };
 
-  const handleAddOrder = (orderData: Omit<Order, "id" | "status" | "date">) => {
+  const handleAddOrder = (orderData: Omit<Order, "id" | "status" | "date"> & { date?: string }) => {
     const product = products.find(p => p.variety === orderData.product);
     if (!product || product.availableQuantity < orderData.totalQuantityKg) {
       return false;
     }
 
+    const { date, ...restData } = orderData;
     const newOrder: Order = {
-      ...orderData,
+      ...restData,
       id: crypto.randomUUID(),
       status: "Pending",
-      date: new Date().toISOString()
+      date: date || new Date().toISOString()
     };
 
     // Deduct stock
@@ -110,6 +112,10 @@ export function DashboardManager() {
 
     // Add order
     setOrders((prev) => [newOrder, ...prev]);
+    
+    // Automatically switch the view to the date of the order just placed
+    setSelectedDate((date || new Date().toISOString()).split('T')[0]);
+    
     return true;
   };
   
@@ -177,26 +183,26 @@ export function DashboardManager() {
   };
 
   const handleSyncToGoogleSheets = async () => {
-    if (orders.length === 0) return;
+    const ordersToSync = orders.filter(o => o.date.split('T')[0] === selectedDate);
+    if (ordersToSync.length === 0) return;
     
     setIsSyncing(true);
     try {
-      const totalAmount = orders.reduce((sum, order) => sum + order.totalAmount, 0);
-      const totalQuantityKg = orders.reduce((sum, order) => sum + order.totalQuantityKg, 0);
+      const totalAmount = ordersToSync.reduce((sum, order) => sum + order.totalAmount, 0);
+      const totalQuantityKg = ordersToSync.reduce((sum, order) => sum + order.totalQuantityKg, 0);
       
       // Build a detailed summary
-      const details = orders.map(o => 
+      const details = ordersToSync.map(o => 
         `${o.customerName}: ${o.product} (${o.totalQuantityKg}kg) - ₹${o.totalAmount}`
       ).join(' | ');
 
       // Generate a link to view the invoice using the current domain (so it works when hosted)
-      const encodedData = encodeURIComponent(JSON.stringify(orders));
+      const encodedData = encodeURIComponent(JSON.stringify(ordersToSync));
       const invoiceLink = `${window.location.origin}/daily-invoice?data=${encodedData}`;
 
       const payload = new URLSearchParams();
-      payload.append('date', new Date().toLocaleDateString('en-GB'));
+      payload.append('date', selectedDate);
       payload.append('totalAmount', totalAmount.toString());
-      payload.append('totalPayment', totalAmount.toString());
       payload.append('totalQuantityKg', totalQuantityKg.toString());
       payload.append('orderCount', orders.length.toString());
       payload.append('details', details);
@@ -243,7 +249,9 @@ export function DashboardManager() {
         
         <div className="lg:col-span-2">
           <OrderList 
-            orders={orders} 
+            orders={orders.filter(o => o.date.split('T')[0] === selectedDate)} 
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
             onToggleStatus={handleToggleOrderStatus} 
             onGenerateInvoice={(order) => setPreviewOrder(order)} 
             onEditOrder={(order) => setEditingOrder(order)}
@@ -269,7 +277,8 @@ export function DashboardManager() {
       />
       
       <DailyInvoicePreview
-        orders={orders}
+        orders={orders.filter(o => o.date.split('T')[0] === selectedDate)}
+        date={selectedDate}
         isOpen={showDailyInvoice}
         onClose={() => setShowDailyInvoice(false)}
       />

@@ -12,11 +12,12 @@ import { toast } from "sonner";
 
 interface OrderFormProps {
   products: Product[];
-  onAddOrder: (orderData: Omit<Order, "id" | "status" | "date">) => boolean;
+  onAddOrder: (orderData: Omit<Order, "id" | "status" | "date"> & { date?: string }) => boolean;
 }
 
 export function OrderForm({ products, onAddOrder }: OrderFormProps) {
   const [customerName, setCustomerName] = useState("");
+  const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
   const [product, setProduct] = useState<MushroomVariety | "">("Oyster");
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState<"KG" | "GM">("KG");
@@ -78,7 +79,8 @@ export function OrderForm({ products, onAddOrder }: OrderFormProps) {
       pricePerPack: parseFloat(pricePerPack) || 0,
       itemsOrPackets: packs,
       totalQuantityKg,
-      totalAmount
+      totalAmount,
+      date: new Date(orderDate).toISOString()
     });
 
     if (success) {
@@ -105,15 +107,28 @@ export function OrderForm({ products, onAddOrder }: OrderFormProps) {
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="customerName">Customer / Buyer Name</Label>
-            <Input
-              id="customerName"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="e.g. FreshMart Supermarket"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="customerName">Customer / Buyer Name</Label>
+              <Input
+                id="customerName"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="e.g. FreshMart Supermarket"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="orderDate">Order Date</Label>
+              <Input
+                id="orderDate"
+                type="date"
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

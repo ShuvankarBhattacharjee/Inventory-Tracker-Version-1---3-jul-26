@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, ListOrdered, Edit2, Trash2, RefreshCw } from "lucide-react";
 
+import { Input } from "@/components/ui/input";
+
 interface OrderListProps {
   orders: Order[];
+  selectedDate: string;
+  onSelectDate: (date: string) => void;
   onToggleStatus: (orderId: string, isPacked: boolean) => void;
   onGenerateInvoice: (order: Order) => void;
   onEditOrder: (order: Order) => void;
@@ -19,17 +23,22 @@ interface OrderListProps {
   onSync?: () => void;
 }
 
-export function OrderList({ orders, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, onSync }: OrderListProps) {
+export function OrderList({ orders, selectedDate, onSelectDate, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, onSync }: OrderListProps) {
   return (
     <Card className="shadow-md border-slate-200 dark:border-slate-800">
       <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="text-xl flex items-center gap-2">
             <ListOrdered className="h-5 w-5 text-emerald-600" />
-            Today's Orders
+            Orders for {new Date(selectedDate).toLocaleDateString('en-GB')}
           </CardTitle>
-          <CardDescription>
-            Manage and generate invoices for today's sales.
+          <CardDescription className="flex items-center gap-2 mt-2">
+            <Input 
+              type="date" 
+              value={selectedDate} 
+              onChange={(e) => onSelectDate(e.target.value)} 
+              className="w-auto h-8 text-sm inline-flex"
+            />
           </CardDescription>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
@@ -156,7 +165,7 @@ export function OrderList({ orders, onToggleStatus, onGenerateInvoice, onEditOrd
             {orders.length === 0 && (
               <TableRow>
                 <TableCell colSpan={10} className="h-32 text-center text-slate-500">
-                  No orders placed today.
+                  No orders found for {new Date(selectedDate).toLocaleDateString('en-GB')}.
                 </TableCell>
               </TableRow>
             )}
