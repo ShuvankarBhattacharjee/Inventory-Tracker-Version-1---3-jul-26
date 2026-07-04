@@ -237,7 +237,7 @@ export function DashboardManager() {
 
       {/* 2 & 3. Order Form and Order List */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-1 sticky top-6">
+        <div className="lg:col-span-1 lg:sticky lg:top-6">
           <OrderForm products={products} onAddOrder={handleAddOrder} />
         </div>
         
