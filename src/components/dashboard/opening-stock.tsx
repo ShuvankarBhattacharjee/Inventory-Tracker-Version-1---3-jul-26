@@ -61,7 +61,7 @@ export function OpeningStock({ products, onAddStock, onEditStock, onDeleteStock 
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-start md:items-end">
           <div className="space-y-2 w-full md:w-1/3">
             <Label htmlFor="variety">Product Type</Label>
             <Select 

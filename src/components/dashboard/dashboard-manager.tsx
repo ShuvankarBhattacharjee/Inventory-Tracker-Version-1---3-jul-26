@@ -7,6 +7,7 @@ import { OrderList } from "./order-list";
 import { InvoicePreview } from "./invoice-preview";
 import { DailyInvoicePreview } from "./daily-invoice-preview";
 import { EditOrderDialog } from "./edit-order-dialog";
+import { HistoryList } from "./history-list";
 import { Product, Order, MushroomVariety, Invoice } from "@/types";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ export function DashboardManager() {
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [showDailyInvoice, setShowDailyInvoice] = useState(false);
+  const [historicalInvoiceData, setHistoricalInvoiceData] = useState<{orders: Order[], date: string} | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Prevent accidental refresh/leave
@@ -200,7 +202,7 @@ export function DashboardManager() {
       payload.append('details', details);
       payload.append('invoiceLink', invoiceLink);
 
-      const response = await fetch('https://script.google.com/macros/s/AKfycbyn5cdc0bgyBMix12AXCRswysVRf1oee_dmOOkdc1LazJwcxxdeXEZ9UTwL8GsjWRHOTg/exec', {
+      const response = await fetch('https://script.google.com/macros/s/AKfycbz9LVCcHy7O7j-LHGE3LL_-DWOWwbmXq0iyB6gIbvYweL3N_kAaGlZBjKPwkU0LBvZ4ng/exec', {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -253,6 +255,11 @@ export function DashboardManager() {
         </div>
       </section>
 
+      {/* History Section */}
+      <section className="mt-8">
+        <HistoryList onViewInvoice={(orders, date) => setHistoricalInvoiceData({orders, date})} />
+      </section>
+
       {/* 4. Invoice Modal */}
       <InvoicePreview 
         order={previewOrder} 
@@ -265,6 +272,13 @@ export function DashboardManager() {
         orders={orders}
         isOpen={showDailyInvoice}
         onClose={() => setShowDailyInvoice(false)}
+      />
+
+      <DailyInvoicePreview
+        orders={historicalInvoiceData?.orders || []}
+        date={historicalInvoiceData?.date}
+        isOpen={!!historicalInvoiceData}
+        onClose={() => setHistoricalInvoiceData(null)}
       />
 
       <EditOrderDialog

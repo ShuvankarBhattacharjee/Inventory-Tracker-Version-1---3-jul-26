@@ -22,7 +22,7 @@ interface OrderListProps {
 export function OrderList({ orders, onToggleStatus, onGenerateInvoice, onEditOrder, onDeleteOrder, onGenerateDailyInvoice, isSyncing, onSync }: OrderListProps) {
   return (
     <Card className="shadow-md border-slate-200 dark:border-slate-800">
-      <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-row items-center justify-between">
+      <CardHeader className="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <CardTitle className="text-xl flex items-center gap-2">
             <ListOrdered className="h-5 w-5 text-emerald-600" />
@@ -32,12 +32,12 @@ export function OrderList({ orders, onToggleStatus, onGenerateInvoice, onEditOrd
             Manage and generate invoices for today's sales.
           </CardDescription>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={onGenerateDailyInvoice}
-            className="hidden sm:flex text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+            className="flex text-emerald-700 border-emerald-200 hover:bg-emerald-50 dark:hover:bg-emerald-950"
             disabled={orders.length === 0}
           >
             <FileText className="h-4 w-4 mr-2" />
@@ -50,14 +50,14 @@ export function OrderList({ orders, onToggleStatus, onGenerateInvoice, onEditOrd
               size="sm"
               onClick={onSync}
               disabled={isSyncing}
-              className="hidden sm:flex text-blue-700 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+              className="flex text-blue-700 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Syncing...' : 'Sync to Sheets'}
             </Button>
           )}
           
-          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200">
+          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 ml-auto sm:ml-0">
             {orders.length} Order{orders.length !== 1 ? 's' : ''}
           </Badge>
         </div>
